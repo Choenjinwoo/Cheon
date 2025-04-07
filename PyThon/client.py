@@ -30,3 +30,6 @@ result_bytes = base64.b64decode(result_b64)
 enc_result = ts.ckks_vector_from(context, result_bytes)
 
 print("복호화된 결과:", enc_result.decrypt())
+
+print("서버 상태 코드:", response.status_code)
+print("서버 응답 내용:", response.text)

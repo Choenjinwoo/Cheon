@@ -1,11 +1,12 @@
-# server.py
 from flask import Flask, request, jsonify
 import tenseal as ts
 import base64
+import torch
+from model import SimpleModel
 
 app = Flask(__name__)
 
-# 서버 context 설정 (클라이언트와 동일하게)
+# 1. 암호화 context 설정 (클라이언트와 동일해야 함)
 context = ts.context(
     ts.SCHEME_TYPE.CKKS,
     poly_modulus_degree=8192,
@@ -14,24 +15,38 @@ context = ts.context(
 context.global_scale = 2**40
 context.generate_galois_keys()
 
+# 2. AI 모델 불러오기
+model = SimpleModel()
+model.load_state_dict(torch.load("model.pt"))
+model.eval()
+
 @app.route("/predict", methods=["POST"])
 def predict():
-    # 1. 클라이언트로부터 암호화된 입력 받기
-    enc_b64 = request.get_json()["enc_input"]
+    try:
+        # 3. 클라이언트로부터 암호화된 입력 받기
+        enc_b64 = request.get_json()["enc_input"]
+        enc_bytes = base64.b64decode(enc_b64)
+        enc_vec = ts.ckks_vector_from(context, enc_bytes)
 
-    # 2. base64 디코딩 → 역직렬화
-    enc_bytes = base64.b64decode(enc_b64)
-    enc_vec = ts.ckks_vector_from(context, enc_bytes)
+        # 4. 암호화 벡터 → 평문 텐서로 변환 (복호화는 아님)
+        input_tensor = torch.tensor(enc_vec.tolist(), dtype=torch.float32).unsqueeze(0)
 
-    # 3. 암호화된 상태에서 연산 수행 (예: (x + 1) * 2)
-    enc_result = (enc_vec + 1) * 2
+        # 5. PyTorch 모델 예측
+        with torch.no_grad():
+            output = model(input_tensor)
+            result = output.item()
 
-    # 4. 결과 직렬화 및 base64 인코딩
-    result_bytes = enc_result.serialize()
-    result_b64 = base64.b64encode(result_bytes).decode("utf-8")
+        # 6. 결과 다시 암호화
+        enc_result = ts.ckks_vector(context, [result])
+        result_bytes = enc_result.serialize()
+        result_b64 = base64.b64encode(result_bytes).decode("utf-8")
 
-    # 5. 응답 반환
-    return jsonify({"enc_result": result_b64})
+        return jsonify({"enc_result": result_b64})
+
+    except Exception as e:
+        print("서버 오류:", e)
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(port=5000)
+
