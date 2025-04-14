@@ -1,4 +1,3 @@
-# client.py
 import tenseal as ts
 import base64
 import requests
@@ -12,15 +11,15 @@ context = ts.context(
 context.global_scale = 2**40
 context.generate_galois_keys()
 
-# 입력 벡터
-plain_vec = [32.0, 37.2, 128.0]
+# 입력 벡터 (예: 나이, 체온, 혈압)
+plain_vec = [2, 2, 3]
 enc_vec = ts.ckks_vector(context, plain_vec)
 
-# 직렬화 + base64 인코딩
+# 직렬화 후 base64 인코딩
 enc_bytes = enc_vec.serialize()
 enc_b64 = base64.b64encode(enc_bytes).decode("utf-8")
 
-# 서버 요청
+# 서버로 POST 요청 보내기
 response = requests.post("http://127.0.0.1:5000/predict", json={"enc_input": enc_b64})
 
 try:
