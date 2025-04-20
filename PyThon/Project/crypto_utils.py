@@ -1,4 +1,5 @@
 import tenseal as ts
+import base64
 
 def create_context():
     context = ts.context(
