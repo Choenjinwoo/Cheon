@@ -5,8 +5,9 @@ from handler import process_encrypted_request
 app = Flask(__name__)
 
 context = create_context()
-weights = [0.2, 0.4, 0.1]
-bias = 0.5
+print("context scale:", context.global_scale)
+weights = [0.2, 0.1, 0.1]
+bias = 0.1
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -15,7 +16,9 @@ def predict():
         result_b64 = process_encrypted_request(context, enc_b64, weights, bias)
         return jsonify({"enc_result": result_b64})
     except Exception as e:
-        print("서버 오류:", e)
+        import traceback
+        print("❗ 서버 오류 발생:")
+        traceback.print_exc()  # ← 에러 전체 출력!
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':

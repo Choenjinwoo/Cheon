@@ -1,7 +1,7 @@
 import tenseal as ts
 import base64
 
-def create_context():
+def create_context(secret=True):
     context = ts.context(
         ts.SCHEME_TYPE.CKKS,
         poly_modulus_degree=8192,
@@ -9,7 +9,12 @@ def create_context():
     )
     context.global_scale = 2**40
     context.generate_galois_keys()
+
+    if not secret:
+        context.make_context_public()
+
     return context
+
 
 def encrypt_vector(context, plain_vec):
     return ts.ckks_vector(context, plain_vec)
